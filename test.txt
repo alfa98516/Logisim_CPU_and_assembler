@@ -1,8 +1,12 @@
 test = $234234
+test = $3234
+
 
 
 label:
-    mov $1, %reg1
+    mov $1 ; hello this is a comment
+
+
 
 
 
