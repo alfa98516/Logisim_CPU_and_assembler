@@ -1,18 +1,4 @@
-test = $234234
-test = $3234
-
-
+test = $122
 
 label:
-    mov $1 ; hello this is a comment
-
-
-
-
-
-
-
-
-
-
-
+    mov !test1

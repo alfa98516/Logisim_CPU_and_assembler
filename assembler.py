@@ -1,9 +1,15 @@
 import sys
-# if len(sys.argv) < 2:
-#     print("Usage: python3 assembler.py <input_file>")
-#     sys.exit(1)
+if len(sys.argv) < 2:
+    print("Usage: python3 assembler.py <input_file>")
+    sys.exit(1)
 
-input_file = "test.txt"
+input_file = sys.argv[1]
+def hexConv(rHex, i):
+    try:
+        return int(rHex, 16)
+    except ValueError:
+        print(f"Error: Syntax error on line {i+1}, '{temp[1][1:]}' is not a valid hexadecimal number")
+        sys.exit(1)
 
 try:
     with open(input_file, 'r') as asm:
@@ -26,7 +32,9 @@ except Exception as e:
     print(f"Error: {e}")
     sys.exit(1)
 
-print(content)
+
+
+machineCode = []
 
 declarations = {
 
@@ -41,6 +49,7 @@ for i in range(len(content)):
             if temp[0][-1] == ":":
                 temp[0] = temp[0][0:-1]
                 declarations[temp[0]] = i
+                continue
             
             else:
                 print(f"Error: Syntax error on line {i+1}, either wrong declaration or label formatted wrong, labels need to end with ':'.")
@@ -51,16 +60,19 @@ for i in range(len(content)):
                 if temp[2][0] == "$":
                     try:
                         declarations[temp[0]] = int(temp[2][1:])
+                        continue
                     except ValueError:
-                        print(f"Error: Type Error on line {i+1}, '$' is reserved for integers. Context: {temp[2][1:]}")
+                        print(f"Error: Type Error on line {i+1}, '$' is reserved for integers. Context: {temp[2][1:]}.")
                         sys.exit(1)
                 elif temp[2][0] == "&":
-                    #TODO: binary number declaration
-                    pass
+                    try:
+                        declarations[temp[0]] = int(temp[2][1:], 2)
+                        continue
+                    except ValueError:
+                        print(f"Error: Syntax error on line {i+1}, {temp[2][1:]} is not a valid binary number")
                 elif temp[2][0] == "#":
-                    #TODO: hex number declaration
-                    pass
-
+                    declarations[temp[0]] = hexConv(temp[2][1:], i)
+                    continue
                 else: 
                     print(f"Error: Syntax error on line {i+1}, '{temp[2][0]}' is an invalid type declaration.")
                     sys.exit(1)
@@ -82,21 +94,116 @@ for i in range(len(content)):
         temp = content[i][4:].split()
         if temp[0] == "mov":
             
-            if len(temp) == 2:
-                inst+=int(temp[1][1:])
-                print(inst)
-                continue
-
-            if temp[2] == r"%reg1":
+            if len(temp) == 2 or temp[2] == r"%reg0":
                 if temp[1][0] == "$":
-                    inst += int(temp[1][1:-1])
-                    print(inst)
+                    machineCode.append([hex(int(temp[1][1:]))[2:]])
                     continue
-            
+
+                elif temp[1][0] == "&":
+                    try:
+                        machineCode.append([hex(int(temp[1][1:], 2))[2:]])
+                        continue
+                    except ValueError:
+                        print(f"Error: Syntax error on line {i+1}, '{temp[1][1:]}' is not a valid binary number")
+                        sys.exit(1)
+
+                elif temp[1][0] == "#":
+                        
+                    machineCode.append([temp[1][1:]])
+                    continue
+
+                elif temp[1][0] == "!":
+                    try:
+                        machineCode.append([hex(int(declarations[temp[1][1:]]))[2:]])
+                        continue
+                    except KeyError:
+                        print(f"Error: Name Error, '{temp[1][1:]}' is undefined")
+                        sys.exit(1)
+                
 
             inst += 128
-            print(temp)
-            if temp[1][0] == "%" and temp[2][0] == "%":
-                #TODO: copy instruction
-                pass
 
+            if temp[1][0] == "%" and temp[2][0] == "%":
+                if temp[1][1:] == "in":
+                    inst += 48
+
+                if temp[2][1:] == "out":
+                    inst += 6
+                if temp[1][-1] != ",":
+                    print(f"Error: syntax error on line {i+1}, Context: {' '.join(temp)}, likely due to missing ','.")
+                    sys.exit(1)
+                cpFrom = int(temp[1][-2])
+                mvTo = int(temp[2][-1])
+                cpFrom *= 8
+                inst += cpFrom + mvTo
+                machineCode.append([hex(inst)[2:]])
+                continue
+
+        if temp[0][0] == "j":
+            match temp[0]:
+                case "jmp":
+                    machineCode.append([hex(196)[2:]])
+                    continue
+                case "jgz":
+                    machineCode.append([hex(199)[2:]])
+                    continue
+                case "jgez":
+                    machineCode.append([hex(198)[2:]])
+                    continue
+                case "jez":
+                    machineCode.append([hex(193)[2:]])
+                    continue
+                case "jlez":
+                    machineCode.append([hex(195)[2:]])
+                    continue
+                case "jlz":
+                    machineCode.append([hex(194)[2:]])
+                    continue
+                case "jnz":
+                    machineCode.append([hex(197)[2:]])
+                    continue
+
+        if temp[0] == "and":
+            machineCode.append(['43'])
+        elif temp[0] == "nand":
+            machineCode.append(['41'])
+        elif temp[0] == "or":
+            machineCode.append(['40'])
+        elif temp[0] == "nor":
+            machineCode.append(['42'])
+        elif temp[0] == "xor":
+            machineCode.append(['41'])
+        elif temp[0] == "add":
+            machineCode.append(['44'])
+        elif temp[0] == "sub":
+            machineCode.append(['45'])
+        elif temp[0] == "mul":
+            machineCode.append(['46'])
+        else:
+            print(f"Error: Unrecognized symbol on line {i+1}")
+            sys.exit(1)
+
+
+if len(sys.argv) == 3:
+    out = sys.argv[2]
+else:
+    out = "out.txt"
+
+print(machineCode)
+
+try:
+    with open(out, "w+", encoding="utf-8") as output:
+        instPerLine = 0
+        for i in range(len(machineCode)):
+            
+            if int(machineCode[i][0], 16) > 255:
+                print(f"Error: instruction on line {i+1} is too large (hint: you are working on an 8 bit computer)")
+
+            if instPerLine == 4:
+                output.write("\n")
+                instPerLine = 0
+            output.write(machineCode[i][0] + " ")
+            instPerLine += 1
+except Exception as e:
+    print(f"Error: {e}")
+    raise e
