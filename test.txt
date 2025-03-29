@@ -1,0 +1,14 @@
+start:
+    mov $5
+    mov %reg0, %reg1
+    mov $1
+    mov %reg0, %reg2
+    mov $6
+    jmp
+main:
+    add
+    mov %reg3, %reg1
+    mov %reg3, %out
+    mov !main
+    jmp
+    

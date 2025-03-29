@@ -123,17 +123,26 @@ for i in range(len(content)):
 
             inst += 128
 
+            no_cp = False
+            noMv = False
             if temp[1][0] == "%" and temp[2][0] == "%":
                 if temp[1][1:] == "in":
+                    no_cp = True
                     inst += 48
 
                 if temp[2][1:] == "out":
+                    noMv = True
                     inst += 6
+
+
                 if temp[1][-1] != ",":
                     print(f"Error: syntax error on line {i+1}, Context: {' '.join(temp)}, likely due to missing ','.")
                     sys.exit(1)
-                cpFrom = int(temp[1][-2])
-                mvTo = int(temp[2][-1])
+                if not no_cp:
+                    cpFrom = int(temp[1][-2])
+
+                if not noMv:
+                    mvTo = int(temp[2][-1])
                 cpFrom *= 8
                 inst += cpFrom + mvTo
                 machineCode.append([hex(inst)[2:]])
